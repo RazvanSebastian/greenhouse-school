@@ -17,9 +17,9 @@ public class Sensor {
 	@GeneratedValue(strategy = GenerationType.AUTO)
 	private Long id;
 
-	private String temperature;
+	private int temperature;
 
-	private String humidity;
+	private int humidity;
 
 	private Date date;
 
@@ -27,7 +27,7 @@ public class Sensor {
 		super();
 	}
 
-	public Sensor(String temperature, String humidity, Date date) {
+	public Sensor(int temperature, int humidity, Date date) {
 		super();
 		this.temperature = temperature;
 		this.humidity = humidity;
@@ -42,19 +42,19 @@ public class Sensor {
 		this.id = id;
 	}
 
-	public String getTemperature() {
+	public int getTemperature() {
 		return temperature;
 	}
 
-	public void setTemperature(String temperature) {
+	public void setTemperature(int temperature) {
 		this.temperature = temperature;
 	}
 
-	public String getHumidity() {
+	public int getHumidity() {
 		return humidity;
 	}
 
-	public void setHumidity(String humidity) {
+	public void setHumidity(int humidity) {
 		this.humidity = humidity;
 	}
 
