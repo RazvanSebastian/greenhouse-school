@@ -29,7 +29,9 @@ public class GreenHouseBasicSecurity extends WebSecurityConfigurerAdapter{
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {
 		http.csrf().disable();
-		http.authorizeRequests().antMatchers("/**").hasRole("ADMIN").and().httpBasic();
+		http.authorizeRequests()
+			.antMatchers("/login").permitAll()
+			.antMatchers("/sensor").hasRole("ADMIN").and().httpBasic();
 		http.sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS);
 	}
 
