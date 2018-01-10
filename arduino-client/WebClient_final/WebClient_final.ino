@@ -16,13 +16,13 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 //adress name for server to connect
 char server[] = "greenhouse-school.herokuapp.com";
 // Set the static IP address to use if the DHCP fails to assign
-IPAddress ip(192, 168, 0, 177);
+IPAddress ip(172, 27, 125, 109);
 //The Ethernet client
 EthernetClient client;
 // last time you connected to the server, in milliseconds
 unsigned long lastSendSensor = 0, lastGetSetPoints = 0;
 // 10 sec delay between updates, in milliseconds (L used for long type)
-const unsigned long postSensorInterval = 10L * 1000L, getSetPointsInterval = 10L * 1000L;
+const unsigned long postSensorInterval = 30L * 1000L, getSetPointsInterval = 10L * 1000L;
 
 //======Sensor======//
 // what digital pin we're connected to
@@ -35,12 +35,13 @@ int tempVal = 0, humidityVal = 0;
 
 //=====Command paramteres=======//
 // values for setpoints (humidity, temperature)
-int hSP = 60, tSP = 20;
+static int hSP = 60, tSP = 20;
 
 void setup() {
 
-  pinMode(8, OUTPUT);
-
+  pinMode(8, OUTPUT); //bec
+  pinMode(3, OUTPUT); // fan in
+  pinMode(2, OUTPUT); // fan out
   Serial.println("DHT11 online!");
   dht.begin();
 
@@ -63,10 +64,7 @@ void setup() {
 
 // this method makes a HTTP POST to the server with temperature and humidity:
 void httpPostSensor() {
-  // close any connection before send a new request.
- 
   if (client.connect(server, 80)) {
-    Serial.println("connected");
     tempVal = dht.readTemperature();
     humidityVal = dht.readHumidity();
     //Read data from sensor and create json
@@ -82,10 +80,11 @@ void httpPostSensor() {
     String postRequest = "POST /sensor HTTP/1.1\r\n";
     postRequest += "Host: greenhouse-school.herokuapp.com\r\n";
     postRequest += "Content-Type: application/json\r\n";
+    postRequest += "Authorization: Basic Z3JlZW5ob3VzZTpzdHJvbmdwYXNzd29yZA==\r\n";
     postRequest += "Content-Length: " + String(postContent.length()) + "\r\n";
     postRequest += "\r\n" + postContent;
     client.print(postRequest);
-   // Serial.println("Send sensor");
+    // Serial.println("Send sensor");
     lastSendSensor = millis();
   } else {
     // if you didn't get a connection to the server:
@@ -95,7 +94,7 @@ void httpPostSensor() {
 
 void httpGetSetPoints() {
   // close any connection before send a new request.
-  
+
   if (client.connect(server, 80)) {
     Serial.println("connected");
     client.println("GET /set-points HTTP/1.1");
@@ -103,8 +102,6 @@ void httpGetSetPoints() {
     client.println("Connection: close");
     client.println();
     lastGetSetPoints = millis();
-
-   // Serial.println("GetSetPoints");
   }
   else {
     // if you didn't get a connection to the server:
@@ -114,7 +111,6 @@ void httpGetSetPoints() {
 
 // Prepocessing function
 void jsonSetPointsProcessing(String response) {
-  //Serial.println(response);
   int iStart = response.indexOf('{');
   int iEnd = response.indexOf('}');
   String json = response.substring(iStart + 1, iEnd);
@@ -126,43 +122,58 @@ void jsonSetPointsProcessing(String response) {
     if (jsonArray[i] == ':') {
       count++;
       if (count == 2) {
-        tSP = json.substring(i + 1, i + 3).toInt();
+        tSP = ((jsonArray[i + 1] - '0') * 10 + (jsonArray[i + 2] - '0'));
       }
       if (count == 3) {
-        hSP = json.substring(i + 1, i + 3).toInt();
+        hSP = ((jsonArray[i + 1] - '0') * 10 + (jsonArray[i + 2] - '0'));
+        break;
       }
     }
   }
 }
 
 void loop() {
-
+  
   if (client.available()) {
     String response = client.readString();
+    Serial.println(response);
     jsonSetPointsProcessing(response);
     client.stop();
-  }
-
-  if (millis() - lastSendSensor > postSensorInterval) {
-    httpPostSensor();
   }
   if (millis() - lastGetSetPoints > getSetPointsInterval) {
     httpGetSetPoints();
   }
+//\  if (millis() - lastSendSensor > postSensorInterval) {
+//    httpPostSensor();
+//  }
 
-  if ( dht.readTemperature() < tSP) {
-    Serial.println();
-    Serial.print(dht.readTemperature());
-    Serial.print("<");
-    Serial.print(tSP);
+  int h = dht.readHumidity();
+  int t = dht.readTemperature();
+  Serial.print("Temperature ");
+  Serial.println(t);
+  Serial.print("tSP ");
+  Serial.println(tSP);
+
+  Serial.print("Humidity ");
+  Serial.println(h);
+  Serial.print("hSP ");
+  Serial.println(hSP);
+
+  if ( t < tSP - 1) {
     digitalWrite(8, HIGH);
   }
-  else {
-    Serial.println();
-    Serial.print(dht.readTemperature());
-    Serial.print(">");
-    Serial.print(tSP);
+  if ( t >= tSP + 1) {
     digitalWrite(8, LOW);
+  }
+
+  if (h <= hSP - 1) {
+    digitalWrite(3, LOW);
+    digitalWrite(2, HIGH);
+  }
+
+  if (h >= hSP + 1) {
+    digitalWrite(3, HIGH);
+    digitalWrite(2, LOW);
   }
 
   delay(1000);
