@@ -31,7 +31,6 @@ const unsigned long postSensorInterval = 30L * 1000L, getSetPointsInterval = 10L
 #define DHTTYPE DHT11
 // Initialize DHT sensor.
 DHT dht(DHTPIN, DHTTYPE);
-int tempVal = 0, humidityVal = 0;
 
 //=====Command paramteres=======//
 // values for setpoints (humidity, temperature)
@@ -64,27 +63,28 @@ void setup() {
 
 // this method makes a HTTP POST to the server with temperature and humidity:
 void httpPostSensor() {
+  // close any connection before send a new request.
+  client.stop();
   if (client.connect(server, 80)) {
-    tempVal = dht.readTemperature();
-    humidityVal = dht.readHumidity();
+    Serial.println("connected");
+
     //Read data from sensor and create json
     String postContent = "";
     postContent += "{\"temperature\" :";
-    postContent += tempVal;
+    postContent += dht.readTemperature();
     postContent += ",\"humidity\" :";
-    postContent += humidityVal;
+    postContent += dht.readHumidity();
     postContent += "}";
-    //Serial.println(postContent);
+    Serial.println(postContent);
 
     // Make a HTTP request:
     String postRequest = "POST /sensor HTTP/1.1\r\n";
     postRequest += "Host: greenhouse-school.herokuapp.com\r\n";
-    postRequest += "Content-Type: application/json\r\n";
     postRequest += "Authorization: Basic Z3JlZW5ob3VzZTpzdHJvbmdwYXNzd29yZA==\r\n";
+    postRequest += "Content-Type: application/json\r\n";
     postRequest += "Content-Length: " + String(postContent.length()) + "\r\n";
     postRequest += "\r\n" + postContent;
     client.print(postRequest);
-    // Serial.println("Send sensor");
     lastSendSensor = millis();
   } else {
     // if you didn't get a connection to the server:
@@ -94,7 +94,7 @@ void httpPostSensor() {
 
 void httpGetSetPoints() {
   // close any connection before send a new request.
-
+  client.stop();
   if (client.connect(server, 80)) {
     Serial.println("connected");
     client.println("GET /set-points HTTP/1.1");
@@ -113,8 +113,11 @@ void httpGetSetPoints() {
 void jsonSetPointsProcessing(String response) {
   int iStart = response.indexOf('{');
   int iEnd = response.indexOf('}');
+  
+  if(iStart == -1)
+    break;
+    
   String json = response.substring(iStart + 1, iEnd);
-
   int count = 0;
   char jsonArray[json.length()];
   json.toCharArray(jsonArray, json.length());
@@ -138,14 +141,15 @@ void loop() {
     String response = client.readString();
     Serial.println(response);
     jsonSetPointsProcessing(response);
-    client.stop();
   }
-  if (millis() - lastGetSetPoints > getSetPointsInterval) {
-    httpGetSetPoints();
-  }
-//\  if (millis() - lastSendSensor > postSensorInterval) {
-//    httpPostSensor();
+  
+//  if (millis() - lastGetSetPoints > getSetPointsInterval) {
+//    httpGetSetPoints();
 //  }
+
+  if (millis() - lastSendSensor > postSensorInterval) {
+    httpPostSensor();
+  }
 
   int h = dht.readHumidity();
   int t = dht.readTemperature();

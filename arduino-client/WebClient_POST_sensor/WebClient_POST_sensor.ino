@@ -16,7 +16,7 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 //adress name for server to connect
 char server[] = "greenhouse-school.herokuapp.com";
 // Set the static IP address to use if the DHCP fails to assign
-IPAddress ip(192, 168, 0, 177);
+IPAddress ip(172, 27, 125, 109);
 //The Ethernet client
 EthernetClient client;
 // last time you connected to the server, in milliseconds
@@ -59,7 +59,7 @@ void httpPostSensor() {
   client.stop();
   if (client.connect(server, 80)) {
     Serial.println("connected");
-    
+
     //Read data from sensor and create json
     String postContent = "";
     postContent += "{\"temperature\" :";
@@ -68,10 +68,11 @@ void httpPostSensor() {
     postContent += dht.readHumidity();
     postContent += "}";
     Serial.println(postContent);
-    
+
     // Make a HTTP request:
     String postRequest = "POST /sensor HTTP/1.1\r\n";
     postRequest += "Host: greenhouse-school.herokuapp.com\r\n";
+    postRequest += "Authorization: Basic Z3JlZW5ob3VzZTpzdHJvbmdwYXNzd29yZA==\r\n";
     postRequest += "Content-Type: application/json\r\n";
     postRequest += "Content-Length: " + String(postContent.length()) + "\r\n";
     postRequest += "\r\n" + postContent;
