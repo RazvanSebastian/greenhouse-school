@@ -18,7 +18,8 @@ char server[] = "greenhouse-school.herokuapp.com";
 // Set the static IP address to use if the DHCP fails to assign
 IPAddress ip(172, 27, 125, 109);
 //The Ethernet client
-EthernetClient client;
+EthernetClient clientGet;
+EthernetClient clientPost;
 // last time you connected to the server, in milliseconds
 unsigned long lastSendSensor = 0, lastGetSetPoints = 0;
 // 10 sec delay between updates, in milliseconds (L used for long type)
@@ -64,8 +65,8 @@ void setup() {
 // this method makes a HTTP POST to the server with temperature and humidity:
 void httpPostSensor() {
   // close any connection before send a new request.
-  client.stop();
-  if (client.connect(server, 80)) {
+  clientPost.stop();
+  if (clientPost.connect(server, 80)) {
     Serial.println("connected");
 
     //Read data from sensor and create json
@@ -84,29 +85,31 @@ void httpPostSensor() {
     postRequest += "Content-Type: application/json\r\n";
     postRequest += "Content-Length: " + String(postContent.length()) + "\r\n";
     postRequest += "\r\n" + postContent;
-    client.print(postRequest);
+    clientPost.print(postRequest);
     lastSendSensor = millis();
   } else {
     // if you didn't get a connection to the server:
     Serial.println("connection failed");
   }
+  clientPost.flush();
 }
 
 void httpGetSetPoints() {
   // close any connection before send a new request.
-  client.stop();
-  if (client.connect(server, 80)) {
+  clientGet.stop();
+  if (clientGet.connect(server, 80)) {
     Serial.println("connected");
-    client.println("GET /set-points HTTP/1.1");
-    client.println("Host: greenhouse-school.herokuapp.com");
-    client.println("Connection: close");
-    client.println();
+    clientGet.println("GET /set-points HTTP/1.1");
+    clientGet.println("Host: greenhouse-school.herokuapp.com");
+    clientGet.println("Connection: close");
+    clientGet.println();
     lastGetSetPoints = millis();
   }
   else {
     // if you didn't get a connection to the server:
     Serial.println("connection failed");
   }
+  clientGet.flush();
 }
 
 // Prepocessing function
@@ -115,7 +118,7 @@ void jsonSetPointsProcessing(String response) {
   int iEnd = response.indexOf('}');
   
   if(iStart == -1)
-    break;
+    return;
     
   String json = response.substring(iStart + 1, iEnd);
   int count = 0;
@@ -137,19 +140,24 @@ void jsonSetPointsProcessing(String response) {
 
 void loop() {
   
-  if (client.available()) {
-    String response = client.readString();
+  if (clientGet.available()) {
+    String response = clientGet.readString();
     Serial.println(response);
     jsonSetPointsProcessing(response);
+  }
+
+  if (clientPost.available()) {
+    String response = clientPost.readString();
+    Serial.println(response);
+  }
+
+  if (millis() - lastSendSensor > postSensorInterval) {
+    httpPostSensor();
   }
   
 //  if (millis() - lastGetSetPoints > getSetPointsInterval) {
 //    httpGetSetPoints();
 //  }
-
-  if (millis() - lastSendSensor > postSensorInterval) {
-    httpPostSensor();
-  }
 
   int h = dht.readHumidity();
   int t = dht.readTemperature();
