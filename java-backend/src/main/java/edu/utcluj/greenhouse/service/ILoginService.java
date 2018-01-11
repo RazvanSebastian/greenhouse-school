@@ -2,6 +2,7 @@ package edu.utcluj.greenhouse.service;
 
 import org.springframework.stereotype.Service;
 
+import edu.utcluj.greenhouse.dto.AuthToken;
 import edu.utcluj.greenhouse.dto.User;
 import edu.utcluj.greenhouse.exception.UserNotFoundException;
 
@@ -13,8 +14,8 @@ public interface ILoginService {
 	 * encoded in base64 to use it to get authorization to do requests
 	 * 
 	 * @param user
-	 * @return base64 string token
+	 * @return AuthToken object with token parameter containing base64 string token
 	 * @throws UserNotFoundException
 	 */
-	public String generateBasicAuthorizationtoken(User user) throws UserNotFoundException;
+	public AuthToken generateBasicAuthorizationtoken(User user) throws UserNotFoundException;
 }
